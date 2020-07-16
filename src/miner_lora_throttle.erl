@@ -29,7 +29,7 @@
     frequency :: number()
 }).
 
--type region() :: 'EU868' | 'US915'.
+-type region() :: 'EU868' | 'US915' | undefined.
 
 -opaque handle() :: {region(), list(#sent_packet{})}.
 
@@ -88,6 +88,8 @@ track_sent(
     track_sent(Handle, SentAt, Frequency, TimeOnAir).
 
 -spec track_sent(handle(), number(), number(), number()) -> handle().
+track_sent({undefined, _SentPackets} = Handle, _SentAt, _Frequency, _TimeOnAir) ->
+    Handle;
 track_sent({Region, SentPackets}, SentAt, Frequency, TimeOnAir) ->
     NewSent = #sent_packet{
         frequency = Frequency,
@@ -123,6 +125,8 @@ trim_sent('EU868', SentPackets = [H | _]) ->
 can_send(_Handle, _AtTime, _Frequency, TimeOnAir) when TimeOnAir > ?MAX_DWELL_TIME_MS ->
     %% TODO: double check that ETSI's max time on air is the same as
     %% FCC.
+    false;
+can_send({undefined, _SentPackets}, _AtTime, _Frequency, _TimeOnAir) ->
     false;
 can_send({'US915', SentPackets}, AtTime, Frequency, TimeOnAir) ->
     CutoffTime = AtTime - ?DWELL_TIME_PERIOD_MS + TimeOnAir,
@@ -220,7 +224,9 @@ symbol_duration(Bandwidth, SpreadingFactor) ->
 new('EU868') ->
     {'EU868', []};
 new('US915') ->
-    {'US915', []}.
+    {'US915', []};
+new(_) ->
+    {undefined, []}.
 
 -spec b2n(boolean()) -> integer().
 b2n(false) ->
